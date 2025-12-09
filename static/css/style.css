@@ -1,0 +1,522 @@
+/*
+ * Dixmont Tax Map Viewer Styles
+ * Town of Dixmont, Maine
+ */
+
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #333;
+    background: #f5f5f5;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, #1a5f7a 0%, #2c7a9c 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.header h2 {
+    font-size: 1rem;
+    font-weight: 400;
+    opacity: 0.9;
+}
+
+.back-link {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.back-link:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: white;
+}
+
+/* Main Container */
+.main-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 320px;
+    background: white;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    position: relative;
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed {
+    margin-left: -280px;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    right: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 60px;
+    background: white;
+    border: 1px solid #ddd;
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.sidebar-toggle span {
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #666;
+    border-bottom: 2px solid #666;
+    transform: rotate(-45deg);
+    transition: transform 0.3s;
+}
+
+.sidebar.collapsed .sidebar-toggle span {
+    transform: rotate(135deg);
+}
+
+.sidebar h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* Sidebar Sections */
+.search-section,
+.parcel-info-section,
+.legend-section,
+.layer-section,
+.help-section {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #eee;
+}
+
+/* Search Box */
+.search-box {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: #1a5f7a;
+    box-shadow: 0 0 0 2px rgba(26, 95, 122, 0.1);
+}
+
+.search-box button {
+    padding: 0.6rem 1rem;
+    background: #1a5f7a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.search-box button:hover {
+    background: #145068;
+}
+
+/* Search Results */
+.search-results {
+    margin-top: 0.75rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 0.75rem;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-result-item:hover {
+    background: #e8f4f8;
+}
+
+.search-result-item .result-id {
+    font-weight: 600;
+    color: #1a5f7a;
+}
+
+.search-result-item .result-owner {
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.search-result-item .result-address {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.no-results {
+    color: #666;
+    font-style: italic;
+    padding: 0.5rem 0;
+}
+
+/* Parcel Details */
+.parcel-details {
+    background: #f9f9f9;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.parcel-details .placeholder-text {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+}
+
+.parcel-detail-row {
+    display: flex;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.parcel-detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.parcel-detail-label {
+    font-weight: 600;
+    color: #666;
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.parcel-detail-value {
+    color: #333;
+    word-break: break-word;
+}
+
+/* Legend */
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.legend-color {
+    width: 24px;
+    height: 16px;
+    border-radius: 2px;
+}
+
+/* Layer Controls */
+.layer-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.layer-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+
+.layer-controls input[type="radio"] {
+    accent-color: #1a5f7a;
+}
+
+/* Help Section */
+.help-section ul {
+    list-style: none;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.help-section li {
+    padding: 0.25rem 0;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.help-section li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #1a5f7a;
+}
+
+/* Data Status */
+.data-status {
+    padding: 1rem 1.25rem;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    margin-top: auto;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+}
+
+.status-indicator.loading {
+    background: #f0ad4e;
+    animation: pulse 1s infinite;
+}
+
+.status-indicator.loaded {
+    background: #5cb85c;
+}
+
+.status-indicator.error {
+    background: #d9534f;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Map Container */
+.map-container {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Map Controls Overlay */
+.map-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.map-controls button {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.map-controls button:hover {
+    background: #f5f5f5;
+}
+
+.map-controls button svg {
+    color: #333;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    transition: opacity 0.3s;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #eee;
+    border-top-color: #1a5f7a;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Footer */
+.footer {
+    background: #333;
+    color: #ccc;
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.footer .disclaimer {
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.25rem;
+}
+
+/* Leaflet Popup Customization */
+.leaflet-popup-content-wrapper {
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.leaflet-popup-content {
+    margin: 12px 16px;
+    font-size: 13px;
+}
+
+.popup-title {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: #1a5f7a;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+}
+
+.popup-row {
+    display: flex;
+    margin-bottom: 4px;
+}
+
+.popup-label {
+    font-weight: 500;
+    color: #666;
+    width: 80px;
+}
+
+.popup-value {
+    color: #333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 1001;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    }
+
+    .sidebar.collapsed {
+        margin-left: -320px;
+    }
+
+    .map-container {
+        width: 100%;
+    }
+
+    .footer {
+        padding: 0.5rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .header,
+    .sidebar,
+    .footer,
+    .map-controls,
+    .loading-overlay {
+        display: none !important;
+    }
+
+    .map-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+}

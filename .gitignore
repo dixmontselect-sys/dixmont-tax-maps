@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (large KMZ/GeoJSON)
+static/data/*.kmz
+static/data/*.kml
+static/data/*.geojson
+
+# Keep the data directory but not the contents
+!static/data/.gitkeep
+
+# Logs
+*.log
+
+# Local development
+.env
+.env.local

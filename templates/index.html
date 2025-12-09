@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Town of Dixmont - Interactive Tax Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Town of Dixmont</h1>
+                <h2>Interactive Tax Map</h2>
+            </div>
+            <div class="header-actions">
+                <a href="https://townofdixmont.org" class="back-link">Back to Town Website</a>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-container">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-toggle" id="sidebar-toggle">
+                    <span></span>
+                </div>
+
+                <!-- Search Section -->
+                <div class="search-section">
+                    <h3>Search Parcels</h3>
+                    <div class="search-box">
+                        <input type="text"
+                               id="search-input"
+                               placeholder="Owner name, Map/Lot, or Address..."
+                               autocomplete="off">
+                        <button id="search-btn" type="button">Search</button>
+                    </div>
+                    <div id="search-results" class="search-results"></div>
+                </div>
+
+                <!-- Parcel Info Section -->
+                <div class="parcel-info-section" id="parcel-info">
+                    <h3>Parcel Information</h3>
+                    <div class="parcel-details" id="parcel-details">
+                        <p class="placeholder-text">Click on a parcel to view details</p>
+                    </div>
+                </div>
+
+                <!-- Legend Section -->
+                <div class="legend-section">
+                    <h3>Map Legend</h3>
+                    <div class="legend-items">
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: rgba(51, 136, 255, 0.3); border: 2px solid #3388ff;"></span>
+                            <span>Parcel Boundary</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: rgba(255, 165, 0, 0.5); border: 2px solid #ff8c00;"></span>
+                            <span>Selected Parcel</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color" style="background: rgba(255, 255, 0, 0.4); border: 2px solid #ffd700;"></span>
+                            <span>Search Result</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Layer Controls -->
+                <div class="layer-section">
+                    <h3>Base Map</h3>
+                    <div class="layer-controls">
+                        <label>
+                            <input type="radio" name="basemap" value="streets" checked>
+                            Street Map
+                        </label>
+                        <label>
+                            <input type="radio" name="basemap" value="satellite">
+                            Satellite
+                        </label>
+                        <label>
+                            <input type="radio" name="basemap" value="topo">
+                            Topographic
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Help Section -->
+                <div class="help-section">
+                    <h3>Help</h3>
+                    <ul>
+                        <li>Click a parcel to view details</li>
+                        <li>Use search to find by owner or Map/Lot</li>
+                        <li>Scroll to zoom, drag to pan</li>
+                        <li>Double-click to zoom in</li>
+                    </ul>
+                </div>
+
+                <!-- Data Status -->
+                <div class="data-status" id="data-status">
+                    <span class="status-indicator loading"></span>
+                    <span class="status-text">Loading parcel data...</span>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <div class="map-container">
+                <div id="map"></div>
+
+                <!-- Map Controls Overlay -->
+                <div class="map-controls">
+                    <button id="zoom-to-town" title="Zoom to Dixmont">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                        </svg>
+                    </button>
+                    <button id="fullscreen-toggle" title="Toggle Fullscreen">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Loading Overlay -->
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="spinner"></div>
+                    <p>Loading map data...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Town of Dixmont, Maine | Tax Map Data</p>
+            <p class="disclaimer">This map is for reference purposes only. For official records, contact the Town Office.</p>
+        </footer>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/map.js"></script>
+</body>
+</html>

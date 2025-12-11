@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Town of Dixmont - Interactive Tax Map</title>
+    <title>Town of Dixmont - Tax Maps & Property Information</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -17,6 +17,232 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
+
+    <style>
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: #1a5f7a;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            border-bottom: 3px solid #145068;
+        }
+        .tab-nav li {
+            flex: 1;
+        }
+        .tab-nav a {
+            display: block;
+            padding: 1rem 1.5rem;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+        .tab-nav a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .tab-nav a.active {
+            background: #145068;
+            color: white;
+        }
+        .tab-nav a svg {
+            display: block;
+            margin: 0 auto 0.5rem;
+            width: 24px;
+            height: 24px;
+        }
+
+        .tab-content {
+            display: none;
+            height: calc(100vh - 140px);
+        }
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* PDF Grid */
+        .pdf-container {
+            padding: 2rem;
+            overflow-y: auto;
+            width: 100%;
+            background: #f5f5f5;
+        }
+        .pdf-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .pdf-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .pdf-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        .pdf-card-icon {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .pdf-card-icon svg {
+            width: 48px;
+            height: 48px;
+        }
+        .pdf-card-body {
+            padding: 1rem;
+        }
+        .pdf-card-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+        .pdf-card-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .pdf-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+        }
+        .pdf-card-actions a {
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .btn-view {
+            background: #1a5f7a;
+            color: white;
+        }
+        .btn-download {
+            background: #eee;
+            color: #333;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #1a5f7a;
+        }
+        .section-group {
+            margin-bottom: 2.5rem;
+        }
+
+        /* PDF Viewer Modal */
+        .pdf-viewer-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+        }
+        .pdf-viewer-modal.show {
+            display: flex;
+        }
+        .pdf-viewer-header {
+            background: #1a5f7a;
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pdf-viewer-header h3 {
+            margin: 0;
+        }
+        .pdf-viewer-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+        .pdf-viewer-frame {
+            flex: 1;
+            border: none;
+        }
+
+        /* Commitment Book Styles */
+        .commitment-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .commitment-card-icon {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+        }
+
+        /* External Link */
+        .external-link-card {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .external-link-card h3 {
+            margin: 0 0 0.5rem;
+        }
+        .external-link-card p {
+            margin: 0 0 1rem;
+            opacity: 0.9;
+        }
+        .external-link-card a {
+            display: inline-block;
+            background: white;
+            color: #2980b9;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* Info Banner */
+        .info-banner {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .info-banner svg {
+            flex-shrink: 0;
+            color: #856404;
+        }
+        .info-banner p {
+            margin: 0;
+            color: #856404;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -24,15 +250,39 @@
         <header class="header">
             <div class="header-content">
                 <h1>Town of Dixmont</h1>
-                <h2>Interactive Tax Map</h2>
+                <h2>Tax Maps & Property Information</h2>
             </div>
             <div class="header-actions">
                 <a href="https://townofdixmont.org" class="back-link">Back to Town Website</a>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <div class="main-container">
+        <!-- Tab Navigation -->
+        <nav>
+            <ul class="tab-nav">
+                <li>
+                    <a href="#interactive" class="active" data-tab="interactive">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                        Interactive Map
+                    </a>
+                </li>
+                <li>
+                    <a href="#pdf-maps" data-tab="pdf-maps">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        PDF Tax Maps
+                    </a>
+                </li>
+                <li>
+                    <a href="#commitments" data-tab="commitments">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                        Commitment Books
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Tab: Interactive Map -->
+        <div id="interactive" class="tab-content active">
             <!-- Sidebar -->
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-toggle" id="sidebar-toggle">
@@ -98,17 +348,6 @@
                     </div>
                 </div>
 
-                <!-- Help Section -->
-                <div class="help-section">
-                    <h3>Help</h3>
-                    <ul>
-                        <li>Click a parcel to view details</li>
-                        <li>Use search to find by owner or Map/Lot</li>
-                        <li>Scroll to zoom, drag to pan</li>
-                        <li>Double-click to zoom in</li>
-                    </ul>
-                </div>
-
                 <!-- Data Status -->
                 <div class="data-status" id="data-status">
                     <span class="status-indicator loading"></span>
@@ -119,8 +358,6 @@
             <!-- Map Container -->
             <div class="map-container">
                 <div id="map"></div>
-
-                <!-- Map Controls Overlay -->
                 <div class="map-controls">
                     <button id="zoom-to-town" title="Zoom to Dixmont">
                         <svg viewBox="0 0 24 24" width="20" height="20">
@@ -133,8 +370,6 @@
                         </svg>
                     </button>
                 </div>
-
-                <!-- Loading Overlay -->
                 <div class="loading-overlay" id="loading-overlay">
                     <div class="spinner"></div>
                     <p>Loading map data...</p>
@@ -142,14 +377,142 @@
             </div>
         </div>
 
+        <!-- Tab: PDF Maps -->
+        <div id="pdf-maps" class="tab-content">
+            <div class="pdf-container">
+                <div class="external-link-card">
+                    <h3>Maine Assessment & Appraisal Services</h3>
+                    <p>Access the latest tax maps and commitment books directly from our assessor's website</p>
+                    <a href="https://www.maineassessment.com/dixmont" target="_blank">Visit Assessor's Portal</a>
+                </div>
+
+                <div class="info-banner">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <p>Click on any map below to view it. These PDF maps show detailed parcel boundaries and lot numbers for property identification.</p>
+                </div>
+
+                <div class="section-group">
+                    <h2 class="section-title">Tax Map Index</h2>
+                    <div class="pdf-grid">
+                        <div class="pdf-card" onclick="openPdfViewer('/static/pdfs/index.pdf', 'Tax Map Index')">
+                            <div class="pdf-card-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            </div>
+                            <div class="pdf-card-body">
+                                <div class="pdf-card-title">Index Map</div>
+                                <div class="pdf-card-desc">Overview of all tax map sheets</div>
+                            </div>
+                            <div class="pdf-card-actions">
+                                <a href="/static/pdfs/index.pdf" class="btn-view" target="_blank">View</a>
+                                <a href="/static/pdfs/index.pdf" class="btn-download" download>Download</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-group">
+                    <h2 class="section-title">Individual Tax Maps</h2>
+                    <div class="pdf-grid" id="tax-map-grid">
+                        <!-- Maps 1-12 will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Commitment Books -->
+        <div id="commitments" class="tab-content">
+            <div class="pdf-container">
+                <div class="external-link-card">
+                    <h3>Tax Commitment Information</h3>
+                    <p>View property valuations, tax assessments, and special classifications</p>
+                    <a href="https://www.maineassessment.com/dixmont" target="_blank">View Latest on Assessor Site</a>
+                </div>
+
+                <div class="section-group">
+                    <h2 class="section-title">Real Estate Tax Commitment</h2>
+                    <div class="pdf-grid">
+                        <div class="pdf-card commitment-card" onclick="openPdfViewer('/static/pdfs/Real_Estate_Tax_Commitment.pdf', 'Real Estate Tax Commitment (Alphabetical)')">
+                            <div class="pdf-card-icon commitment-card-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                            </div>
+                            <div class="pdf-card-body">
+                                <div class="pdf-card-title">By Owner Name</div>
+                                <div class="pdf-card-desc">Alphabetical listing of all property owners and assessments</div>
+                            </div>
+                            <div class="pdf-card-actions">
+                                <a href="/static/pdfs/Real_Estate_Tax_Commitment.pdf" class="btn-view" target="_blank">View</a>
+                                <a href="/static/pdfs/Real_Estate_Tax_Commitment.pdf" class="btn-download" download>Download</a>
+                            </div>
+                        </div>
+
+                        <div class="pdf-card commitment-card" onclick="openPdfViewer('/static/pdfs/Real_Estate_Tax_Commitment_By_Map_Lot.pdf', 'Real Estate Tax Commitment (By Map/Lot)')">
+                            <div class="pdf-card-icon commitment-card-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                            </div>
+                            <div class="pdf-card-body">
+                                <div class="pdf-card-title">By Map/Lot</div>
+                                <div class="pdf-card-desc">Properties organized by tax map and lot number</div>
+                            </div>
+                            <div class="pdf-card-actions">
+                                <a href="/static/pdfs/Real_Estate_Tax_Commitment_By_Map_Lot.pdf" class="btn-view" target="_blank">View</a>
+                                <a href="/static/pdfs/Real_Estate_Tax_Commitment_By_Map_Lot.pdf" class="btn-download" download>Download</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-group">
+                    <h2 class="section-title">Other Tax Information</h2>
+                    <div class="pdf-grid">
+                        <div class="pdf-card commitment-card" onclick="openPdfViewer('/static/pdfs/Personal_Property_Tax_Commitment.pdf', 'Personal Property Tax Commitment')">
+                            <div class="pdf-card-icon" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+                            </div>
+                            <div class="pdf-card-body">
+                                <div class="pdf-card-title">Personal Property</div>
+                                <div class="pdf-card-desc">Business equipment and personal property assessments</div>
+                            </div>
+                            <div class="pdf-card-actions">
+                                <a href="/static/pdfs/Personal_Property_Tax_Commitment.pdf" class="btn-view" target="_blank">View</a>
+                                <a href="/static/pdfs/Personal_Property_Tax_Commitment.pdf" class="btn-download" download>Download</a>
+                            </div>
+                        </div>
+
+                        <div class="pdf-card commitment-card" onclick="openPdfViewer('/static/pdfs/Tree_Growth.pdf', 'Tree Growth Program')">
+                            <div class="pdf-card-icon" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h2L12 2 5 12h2l-3 8h6v4h4v-4h6l-3-8z"/></svg>
+                            </div>
+                            <div class="pdf-card-body">
+                                <div class="pdf-card-title">Tree Growth</div>
+                                <div class="pdf-card-desc">Properties enrolled in Tree Growth tax program</div>
+                            </div>
+                            <div class="pdf-card-actions">
+                                <a href="/static/pdfs/Tree_Growth.pdf" class="btn-view" target="_blank">View</a>
+                                <a href="/static/pdfs/Tree_Growth.pdf" class="btn-download" download>Download</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="footer">
-            <p>Town of Dixmont, Maine | Tax Map Data</p>
+            <p>Town of Dixmont, Maine | Tax Map Data provided by Maine Assessment & Appraisal Services</p>
             <p class="disclaimer">
                 <a href="#" id="show-disclaimer">View Data Disclaimer</a> |
                 Town Office: 207-234-2691
             </p>
         </footer>
+    </div>
+
+    <!-- PDF Viewer Modal -->
+    <div class="pdf-viewer-modal" id="pdf-viewer-modal">
+        <div class="pdf-viewer-header">
+            <h3 id="pdf-viewer-title">Document</h3>
+            <button class="pdf-viewer-close" onclick="closePdfViewer()">&times;</button>
+        </div>
+        <iframe class="pdf-viewer-frame" id="pdf-viewer-frame"></iframe>
     </div>
 
     <!-- Disclaimer Modal -->
@@ -159,21 +522,11 @@
             <div class="disclaimer-text">
                 <p><strong>IMPORTANT NOTICE:</strong></p>
                 <p>The property information and maps provided on this website are for general reference and informational purposes only. This data is compiled from various sources and is subject to change without notice.</p>
-
-                <p><strong>Accuracy:</strong> While we strive to provide accurate and up-to-date information, the Town of Dixmont makes no warranties, expressed or implied, regarding the accuracy, completeness, reliability, or suitability of this data. Property boundaries shown are approximate and should not be used to determine actual property lines.</p>
-
-                <p><strong>Not a Legal Document:</strong> This map is NOT a survey and should NOT be used for legal purposes, boundary disputes, construction planning, or any purpose requiring precise measurements. For accurate property boundaries, please consult a licensed surveyor.</p>
-
-                <p><strong>Official Records:</strong> For official property records, tax information, deed research, or any legal matters, please contact the Town Office directly or consult the Penobscot County Registry of Deeds.</p>
-
-                <p><strong>Data Currency:</strong> Property ownership, valuations, and parcel information may not reflect recent transfers, subdivisions, or assessment changes. Data is updated periodically but may not be current.</p>
-
-                <p><strong>Limitation of Liability:</strong> The Town of Dixmont assumes no liability for any errors, omissions, or inaccuracies in the data presented, nor for any actions taken based on this information.</p>
-
+                <p><strong>Accuracy:</strong> While we strive to provide accurate and up-to-date information, the Town of Dixmont makes no warranties, expressed or implied, regarding the accuracy, completeness, reliability, or suitability of this data.</p>
+                <p><strong>Not a Legal Document:</strong> These maps are NOT surveys and should NOT be used for legal purposes, boundary disputes, or construction planning.</p>
                 <p><strong>Contact:</strong><br>
-                Town of Dixmont<br>
-                Town Office: 207-234-2691<br>
-                Address: 1024 Main Road, Dixmont, ME 04932</p>
+                Town of Dixmont - 207-234-2691<br>
+                1024 Main Road, Dixmont, ME 04932</p>
             </div>
             <div class="disclaimer-actions">
                 <label class="dont-show-again">
@@ -187,6 +540,66 @@
     <!-- Custom JavaScript -->
     <script src="/static/js/map.js"></script>
     <script>
+        // Tab navigation
+        document.querySelectorAll('.tab-nav a').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('data-tab');
+
+                // Update active tab
+                document.querySelectorAll('.tab-nav a').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show target content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
+
+                // Resize map if switching to interactive tab
+                if (targetId === 'interactive' && window.taxMapViewer && window.taxMapViewer.map) {
+                    setTimeout(() => window.taxMapViewer.map.invalidateSize(), 100);
+                }
+            });
+        });
+
+        // Generate tax map grid
+        const mapGrid = document.getElementById('tax-map-grid');
+        for (let i = 1; i <= 12; i++) {
+            const mapNum = i;
+            const fileName = i <= 7 ? `map_${i}.pdf` : `Map_${i}.pdf`;
+            mapGrid.innerHTML += `
+                <div class="pdf-card" onclick="openPdfViewer('/static/pdfs/${fileName}', 'Tax Map ${mapNum}')">
+                    <div class="pdf-card-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    </div>
+                    <div class="pdf-card-body">
+                        <div class="pdf-card-title">Map ${mapNum}</div>
+                        <div class="pdf-card-desc">Tax Map Sheet ${mapNum}</div>
+                    </div>
+                    <div class="pdf-card-actions">
+                        <a href="/static/pdfs/${fileName}" class="btn-view" target="_blank" onclick="event.stopPropagation()">View</a>
+                        <a href="/static/pdfs/${fileName}" class="btn-download" download onclick="event.stopPropagation()">Download</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        // PDF Viewer Modal
+        function openPdfViewer(url, title) {
+            document.getElementById('pdf-viewer-title').textContent = title;
+            document.getElementById('pdf-viewer-frame').src = url;
+            document.getElementById('pdf-viewer-modal').classList.add('show');
+        }
+
+        function closePdfViewer() {
+            document.getElementById('pdf-viewer-modal').classList.remove('show');
+            document.getElementById('pdf-viewer-frame').src = '';
+        }
+
+        // Close on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePdfViewer();
+        });
+
         // Disclaimer modal handling
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('disclaimer-modal');
@@ -194,12 +607,8 @@
             const showLink = document.getElementById('show-disclaimer');
             const dontShowCheckbox = document.getElementById('dont-show-again');
 
-            // Check if user has previously accepted
             const hasAccepted = localStorage.getItem('dixmont-disclaimer-accepted');
-
-            if (!hasAccepted) {
-                modal.classList.add('show');
-            }
+            if (!hasAccepted) modal.classList.add('show');
 
             acceptBtn.addEventListener('click', function() {
                 if (dontShowCheckbox.checked) {
@@ -213,11 +622,8 @@
                 modal.classList.add('show');
             });
 
-            // Close on background click
             modal.addEventListener('click', function(e) {
-                if (e.target === modal) {
-                    modal.classList.remove('show');
-                }
+                if (e.target === modal) modal.classList.remove('show');
             });
         });
     </script>

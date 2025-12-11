@@ -5,10 +5,138 @@ A Flask-based interactive tax map viewer for the Town of Dixmont, Maine
 
 import os
 import json
+import re
 import zipfile
+import io
 import xml.etree.ElementTree as ET
+from html.parser import HTMLParser
+from datetime import datetime
+import requests
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_cors import CORS
+
+# Remote KMZ file URL (tax assessing company)
+REMOTE_KMZ_URL = "https://4a1b1e2a-906f-4969-8e26-d6a9ca3c78df.filesusr.com/ugd/85f57f_24a82e0a5f174629ab7ed01b8f67a2f5.kmz?dn=DixmontParcels.kmz"
+
+# Track data source
+data_source_info = {
+    'source': 'unknown',
+    'loaded_at': None,
+    'parcel_count': 0,
+    'error': None
+}
+
+
+class KMLDescriptionParser(HTMLParser):
+    """Parse HTML table from KML description to extract property data"""
+
+    def __init__(self):
+        super().__init__()
+        self.data = {}
+        self.current_key = None
+        self.current_value = None
+        self.in_td = False
+        self.td_count = 0
+        self.row_data = []
+        self.owner_from_header = None
+        self.in_header_row = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'td':
+            self.in_td = True
+            self.td_count += 1
+        elif tag == 'tr':
+            self.row_data = []
+            self.td_count = 0
+            # Check if this is a header row (bold, centered)
+            attrs_dict = dict(attrs)
+            style = attrs_dict.get('style', '')
+            if 'font-weight:bold' in style or 'text-align:center' in style:
+                self.in_header_row = True
+            else:
+                self.in_header_row = False
+
+    def handle_endtag(self, tag):
+        if tag == 'td':
+            self.in_td = False
+        elif tag == 'tr':
+            # Process completed row
+            if len(self.row_data) == 2:
+                key, value = self.row_data
+                if key and value:
+                    self.data[key.strip()] = value.strip()
+            elif len(self.row_data) == 1 and self.in_header_row:
+                # Single cell in header row is often the owner name
+                self.owner_from_header = self.row_data[0].strip()
+            self.row_data = []
+
+    def handle_data(self, data):
+        if self.in_td:
+            text = data.strip()
+            if text:
+                self.row_data.append(text)
+
+    def get_properties(self):
+        """Return extracted properties with normalized keys"""
+        props = {}
+
+        # Map various key names to standard property names
+        key_mapping = {
+            'Owner': 'Owner',
+            'owner': 'Owner',
+            'OWNER': 'Owner',
+            'MapBkLot': 'MapLot',
+            'TRMapBkLot': 'MapLot',
+            'Map_Lot': 'MapLot',
+            'MAP_LOT': 'MapLot',
+            'GISAcres': 'Acres',
+            'TRIOAcres': 'Acres',
+            'Acres': 'Acres',
+            'ACRES': 'Acres',
+            'LandValue': 'LandValue',
+            'Land_Value': 'LandValue',
+            'LAND_VALUE': 'LandValue',
+            'BldgValue': 'BldgValue',
+            'Bldg_Value': 'BldgValue',
+            'BLDG_VALUE': 'BldgValue',
+            'TotalValue': 'TotalValue',
+            'Total_Value': 'TotalValue',
+            'TOTAL_VALUE': 'TotalValue',
+            'Street': 'Street',
+            'STREET': 'Street',
+            'StNumber': 'StNumber',
+            'Account': 'Account',
+            'Town': 'Town',
+            'County': 'County',
+            'Year_Built': 'YearBuilt',
+            'BldgStyle': 'BldgStyle',
+            'NetAssess': 'NetAssess',
+            'Exemption': 'Exemption',
+        }
+
+        for key, value in self.data.items():
+            normalized_key = key_mapping.get(key, key)
+            props[normalized_key] = value
+
+        # Add owner from header if not found elsewhere
+        if 'Owner' not in props and self.owner_from_header:
+            props['Owner'] = self.owner_from_header
+
+        return props
+
+
+def parse_html_description(html_content):
+    """Extract property data from HTML description"""
+    if not html_content:
+        return {}
+
+    parser = KMLDescriptionParser()
+    try:
+        parser.feed(html_content)
+        return parser.get_properties()
+    except Exception as e:
+        print(f"Error parsing HTML description: {e}")
+        return {}
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for API access from other domains
@@ -39,17 +167,23 @@ def parse_kml(kml_content):
                 'geometry': None
             }
 
-            # Get name
+            # Get name (Map/Lot number)
             name_elem = placemark.find('kml:name', ns)
             if name_elem is not None and name_elem.text:
                 feature['properties']['name'] = name_elem.text
+                feature['properties']['MapLot'] = name_elem.text
 
-            # Get description
+            # Get description and parse HTML table for property data
             desc_elem = placemark.find('kml:description', ns)
             if desc_elem is not None and desc_elem.text:
-                feature['properties']['description'] = desc_elem.text
+                # Parse HTML description to extract property data
+                html_props = parse_html_description(desc_elem.text)
+                feature['properties'].update(html_props)
 
-            # Get extended data
+                # Keep raw description for reference (but truncated)
+                # feature['properties']['description'] = desc_elem.text[:100]
+
+            # Get extended data (fallback if no HTML description)
             extended_data = placemark.find('kml:ExtendedData', ns)
             if extended_data is not None:
                 for data in extended_data.findall('kml:Data', ns):
@@ -63,6 +197,10 @@ def parse_kml(kml_content):
                     key = schema_data.get('name')
                     if key and schema_data.text:
                         feature['properties'][key] = schema_data.text
+
+            # Use MapLot from parsed data if name was empty
+            if not feature['properties'].get('name') and feature['properties'].get('MapLot'):
+                feature['properties']['name'] = feature['properties']['MapLot']
 
             # Get geometry - Polygon
             polygon = placemark.find('.//kml:Polygon', ns)
@@ -119,6 +257,22 @@ def parse_kml(kml_content):
                         }
 
             if feature['geometry']:
+                # Filter out large empty features (roads, ROW, unmapped areas)
+                # These have no name and no owner and cover large areas
+                props = feature['properties']
+                name = props.get('name', '').strip()
+                owner = props.get('Owner', '').strip()
+
+                # Skip features that are clearly not parcels
+                if not name and not owner:
+                    # This is likely a road ROW or unmapped area - skip it
+                    continue
+
+                # Also skip features named just spaces or very generic
+                if name in ['', ' ', 'UNK', 'ROW']:
+                    # Skip unknown and right-of-way features
+                    continue
+
                 features.append(feature)
 
     except ET.ParseError as e:
@@ -143,7 +297,7 @@ def parse_coordinates(coord_string):
 
 
 def parse_kmz(kmz_path):
-    """Extract and parse KML from a KMZ file"""
+    """Extract and parse KML from a KMZ file path"""
     features = []
 
     try:
@@ -163,30 +317,135 @@ def parse_kmz(kmz_path):
     return features
 
 
+def parse_kmz_bytes(kmz_bytes):
+    """Extract and parse KML from KMZ bytes (for remote files)"""
+    features = []
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(kmz_bytes), 'r') as kmz:
+            # Find KML file(s) in the archive
+            kml_files = [f for f in kmz.namelist() if f.endswith('.kml')]
+
+            for kml_file in kml_files:
+                kml_content = kmz.read(kml_file)
+                features.extend(parse_kml(kml_content))
+
+    except zipfile.BadZipFile:
+        print("Invalid KMZ data from remote source")
+    except Exception as e:
+        print(f"Error parsing remote KMZ: {e}")
+
+    return features
+
+
+def fetch_remote_kmz():
+    """Try to fetch KMZ from remote URL"""
+    global data_source_info
+
+    try:
+        print(f"Attempting to fetch KMZ from remote URL...")
+        response = requests.get(REMOTE_KMZ_URL, timeout=30)
+        response.raise_for_status()
+
+        # Check that we got a reasonable file size (KMZ should be > 10KB)
+        if len(response.content) < 10000:
+            raise ValueError(f"Remote file too small ({len(response.content)} bytes)")
+
+        features = parse_kmz_bytes(response.content)
+
+        if features:
+            print(f"Successfully loaded {len(features)} features from remote KMZ")
+            data_source_info['source'] = 'remote'
+            data_source_info['loaded_at'] = datetime.now().isoformat()
+            data_source_info['parcel_count'] = len(features)
+            data_source_info['error'] = None
+            return features
+        else:
+            raise ValueError("No features parsed from remote KMZ")
+
+    except requests.exceptions.Timeout:
+        error_msg = "Remote KMZ fetch timed out"
+        print(error_msg)
+        data_source_info['error'] = error_msg
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Remote KMZ fetch failed: {str(e)}"
+        print(error_msg)
+        data_source_info['error'] = error_msg
+    except Exception as e:
+        error_msg = f"Remote KMZ processing error: {str(e)}"
+        print(error_msg)
+        data_source_info['error'] = error_msg
+
+    return None
+
+
 def load_geojson_data():
-    """Load GeoJSON data from the data directory"""
+    """Load GeoJSON data - tries remote first, falls back to local"""
+    global data_source_info
+
     geojson_path = os.path.join(DATA_DIR, 'parcels.geojson')
 
+    # Check if we have a cached file and if it's recent (less than 1 hour old)
+    # For now, always try remote first on app start, then use cache
     if os.path.exists(geojson_path):
-        with open(geojson_path, 'r') as f:
-            return json.load(f)
+        # If we already know the source, just return cached data
+        if data_source_info['source'] != 'unknown':
+            with open(geojson_path, 'r') as f:
+                return json.load(f)
 
-    # Check for KMZ files and convert
+    # Try remote source first
+    features = fetch_remote_kmz()
+
+    if features:
+        geojson = {
+            'type': 'FeatureCollection',
+            'features': features
+        }
+        # Cache the converted data
+        try:
+            with open(geojson_path, 'w') as f:
+                json.dump(geojson, f)
+            print(f"Cached {len(features)} features from remote source")
+        except Exception as e:
+            print(f"Warning: Could not cache data: {e}")
+        return geojson
+
+    # Fallback to local KMZ file
+    print("Falling back to local KMZ file...")
     for filename in os.listdir(DATA_DIR):
         if filename.endswith('.kmz'):
             kmz_path = os.path.join(DATA_DIR, filename)
             features = parse_kmz(kmz_path)
             if features:
+                data_source_info['source'] = 'local'
+                data_source_info['loaded_at'] = datetime.now().isoformat()
+                data_source_info['parcel_count'] = len(features)
+
                 geojson = {
                     'type': 'FeatureCollection',
                     'features': features
                 }
                 # Cache the converted data
-                with open(geojson_path, 'w') as f:
-                    json.dump(geojson, f)
+                try:
+                    with open(geojson_path, 'w') as f:
+                        json.dump(geojson, f)
+                    print(f"Cached {len(features)} features from local source")
+                except Exception as e:
+                    print(f"Warning: Could not cache data: {e}")
                 return geojson
 
+    # Check for existing cached file as last resort
+    if os.path.exists(geojson_path):
+        print("Using existing cached geojson file")
+        data_source_info['source'] = 'cached'
+        with open(geojson_path, 'r') as f:
+            data = json.load(f)
+            data_source_info['parcel_count'] = len(data.get('features', []))
+            return data
+
     # Return empty feature collection if no data
+    data_source_info['source'] = 'none'
+    data_source_info['error'] = 'No data source available'
     return {'type': 'FeatureCollection', 'features': []}
 
 
@@ -237,15 +496,11 @@ def search_parcels():
 
         # Search in common fields
         searchable = ' '.join([
-            str(props.get('OWNER', '')),
             str(props.get('Owner', '')),
-            str(props.get('owner', '')),
-            str(props.get('MAP_LOT', '')),
-            str(props.get('Map_Lot', '')),
+            str(props.get('MapLot', '')),
             str(props.get('name', '')),
-            str(props.get('ADDRESS', '')),
-            str(props.get('Address', '')),
-            str(props.get('LOCATION', '')),
+            str(props.get('Street', '')),
+            str(props.get('Account', '')),
         ]).lower()
 
         if query in searchable:
@@ -253,11 +508,16 @@ def search_parcels():
             geometry = feature.get('geometry', {})
             center = get_geometry_center(geometry)
 
+            # Build address from street number and name
+            st_num = props.get('StNumber', '')
+            street = props.get('Street', '')
+            address = f"{st_num} {street}".strip() if st_num != '0' else street
+
             results.append({
-                'id': props.get('MAP_LOT') or props.get('Map_Lot') or props.get('name', 'Unknown'),
-                'owner': props.get('OWNER') or props.get('Owner') or props.get('owner', 'Unknown'),
-                'address': props.get('ADDRESS') or props.get('Address') or props.get('LOCATION', ''),
-                'acreage': props.get('ACREAGE') or props.get('Acreage') or props.get('ACRES', ''),
+                'id': props.get('MapLot') or props.get('name', 'Unknown'),
+                'owner': props.get('Owner', 'Unknown'),
+                'address': address,
+                'acreage': props.get('Acres', ''),
                 'center': center
             })
 
@@ -311,14 +571,47 @@ def get_stats():
     return jsonify({
         'total_parcels': len(features),
         'has_data': len(features) > 0,
-        'sample_properties': features[0].get('properties', {}).keys() if features else []
+        'sample_properties': list(features[0].get('properties', {}).keys()) if features else [],
+        'data_source': data_source_info
+    })
+
+
+@app.route('/api/data-source')
+def get_data_source():
+    """Get information about the current data source"""
+    return jsonify(data_source_info)
+
+
+@app.route('/api/refresh')
+def refresh_data():
+    """Force refresh data from remote source"""
+    global data_source_info
+
+    # Reset source info to trigger fresh load
+    data_source_info['source'] = 'unknown'
+
+    # Delete cached file
+    geojson_path = os.path.join(DATA_DIR, 'parcels.geojson')
+    if os.path.exists(geojson_path):
+        try:
+            os.remove(geojson_path)
+        except:
+            pass
+
+    # Reload data
+    geojson = load_geojson_data()
+
+    return jsonify({
+        'success': True,
+        'data_source': data_source_info,
+        'parcel_count': len(geojson.get('features', []))
     })
 
 
 @app.route('/health')
 def health():
     """Health check endpoint for Cloud Run"""
-    return jsonify({'status': 'healthy'})
+    return jsonify({'status': 'healthy', 'data_source': data_source_info['source']})
 
 
 # Static files (for development)

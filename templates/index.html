@@ -145,11 +145,81 @@
         <!-- Footer -->
         <footer class="footer">
             <p>Town of Dixmont, Maine | Tax Map Data</p>
-            <p class="disclaimer">This map is for reference purposes only. For official records, contact the Town Office.</p>
+            <p class="disclaimer">
+                <a href="#" id="show-disclaimer">View Data Disclaimer</a> |
+                Town Office: 207-234-2691
+            </p>
         </footer>
+    </div>
+
+    <!-- Disclaimer Modal -->
+    <div class="disclaimer-modal" id="disclaimer-modal">
+        <div class="disclaimer-content">
+            <h2>Tax Map Data Disclaimer</h2>
+            <div class="disclaimer-text">
+                <p><strong>IMPORTANT NOTICE:</strong></p>
+                <p>The property information and maps provided on this website are for general reference and informational purposes only. This data is compiled from various sources and is subject to change without notice.</p>
+
+                <p><strong>Accuracy:</strong> While we strive to provide accurate and up-to-date information, the Town of Dixmont makes no warranties, expressed or implied, regarding the accuracy, completeness, reliability, or suitability of this data. Property boundaries shown are approximate and should not be used to determine actual property lines.</p>
+
+                <p><strong>Not a Legal Document:</strong> This map is NOT a survey and should NOT be used for legal purposes, boundary disputes, construction planning, or any purpose requiring precise measurements. For accurate property boundaries, please consult a licensed surveyor.</p>
+
+                <p><strong>Official Records:</strong> For official property records, tax information, deed research, or any legal matters, please contact the Town Office directly or consult the Penobscot County Registry of Deeds.</p>
+
+                <p><strong>Data Currency:</strong> Property ownership, valuations, and parcel information may not reflect recent transfers, subdivisions, or assessment changes. Data is updated periodically but may not be current.</p>
+
+                <p><strong>Limitation of Liability:</strong> The Town of Dixmont assumes no liability for any errors, omissions, or inaccuracies in the data presented, nor for any actions taken based on this information.</p>
+
+                <p><strong>Contact:</strong><br>
+                Town of Dixmont<br>
+                Town Office: 207-234-2691<br>
+                Address: 1024 Main Road, Dixmont, ME 04932</p>
+            </div>
+            <div class="disclaimer-actions">
+                <label class="dont-show-again">
+                    <input type="checkbox" id="dont-show-again"> Don't show this again
+                </label>
+                <button id="accept-disclaimer" class="accept-btn">I Understand</button>
+            </div>
+        </div>
     </div>
 
     <!-- Custom JavaScript -->
     <script src="/static/js/map.js"></script>
+    <script>
+        // Disclaimer modal handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('disclaimer-modal');
+            const acceptBtn = document.getElementById('accept-disclaimer');
+            const showLink = document.getElementById('show-disclaimer');
+            const dontShowCheckbox = document.getElementById('dont-show-again');
+
+            // Check if user has previously accepted
+            const hasAccepted = localStorage.getItem('dixmont-disclaimer-accepted');
+
+            if (!hasAccepted) {
+                modal.classList.add('show');
+            }
+
+            acceptBtn.addEventListener('click', function() {
+                if (dontShowCheckbox.checked) {
+                    localStorage.setItem('dixmont-disclaimer-accepted', 'true');
+                }
+                modal.classList.remove('show');
+            });
+
+            showLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                modal.classList.add('show');
+            });
+
+            // Close on background click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

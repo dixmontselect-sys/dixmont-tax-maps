@@ -274,12 +274,20 @@ class TaxMapViewer {
     }
 
     createPopupContent(properties) {
-        const id = properties.MAP_LOT || properties.Map_Lot || properties.PARCEL_ID || properties.name || 'N/A';
-        const owner = properties.OWNER || properties.Owner || properties.owner || 'Unknown';
-        const address = properties.ADDRESS || properties.Address || properties.LOCATION || '';
-        const acreage = properties.ACREAGE || properties.Acreage || properties.ACRES || '';
-        const landValue = properties.LAND_VALUE || properties.LandValue || '';
-        const buildingValue = properties.BLDG_VALUE || properties.BuildingValue || '';
+        const id = properties.MapLot || properties.name || 'N/A';
+        const owner = properties.Owner || 'Unknown';
+
+        // Build address from street number and name
+        let address = '';
+        if (properties.Street) {
+            const stNum = properties.StNumber && properties.StNumber !== '0' ? properties.StNumber + ' ' : '';
+            address = stNum + properties.Street;
+        }
+
+        const acreage = properties.Acres || '';
+        const landValue = properties.LandValue || '';
+        const buildingValue = properties.BldgValue || '';
+        const totalValue = properties.TotalValue || '';
 
         let html = `<div class="popup-title">Parcel ${id}</div>`;
         html += `<div class="popup-row"><span class="popup-label">Owner:</span><span class="popup-value">${owner}</span></div>`;
@@ -288,13 +296,16 @@ class TaxMapViewer {
             html += `<div class="popup-row"><span class="popup-label">Address:</span><span class="popup-value">${address}</span></div>`;
         }
         if (acreage) {
-            html += `<div class="popup-row"><span class="popup-label">Acres:</span><span class="popup-value">${acreage}</span></div>`;
+            html += `<div class="popup-row"><span class="popup-label">Acres:</span><span class="popup-value">${parseFloat(acreage).toFixed(2)}</span></div>`;
         }
         if (landValue) {
             html += `<div class="popup-row"><span class="popup-label">Land:</span><span class="popup-value">$${parseInt(landValue).toLocaleString()}</span></div>`;
         }
-        if (buildingValue) {
+        if (buildingValue && buildingValue !== '0') {
             html += `<div class="popup-row"><span class="popup-label">Building:</span><span class="popup-value">$${parseInt(buildingValue).toLocaleString()}</span></div>`;
+        }
+        if (totalValue) {
+            html += `<div class="popup-row"><span class="popup-label">Total:</span><span class="popup-value">$${parseInt(totalValue).toLocaleString()}</span></div>`;
         }
 
         return html;
@@ -327,44 +338,60 @@ class TaxMapViewer {
     showParcelDetails(properties) {
         const detailsContainer = document.getElementById('parcel-details');
 
+        // Build address from street number and name
+        let address = '';
+        if (properties.Street) {
+            const stNum = properties.StNumber && properties.StNumber !== '0' ? properties.StNumber + ' ' : '';
+            address = stNum + properties.Street;
+        }
+
         // Map property names to display labels
         const displayFields = [
-            { key: ['MAP_LOT', 'Map_Lot', 'PARCEL_ID', 'name'], label: 'Map/Lot' },
-            { key: ['OWNER', 'Owner', 'owner'], label: 'Owner' },
-            { key: ['ADDRESS', 'Address', 'LOCATION'], label: 'Address' },
-            { key: ['ACREAGE', 'Acreage', 'ACRES'], label: 'Acreage' },
-            { key: ['LAND_VALUE', 'LandValue'], label: 'Land Value', format: 'currency' },
-            { key: ['BLDG_VALUE', 'BuildingValue'], label: 'Building Value', format: 'currency' },
-            { key: ['TOTAL_VALUE', 'TotalValue'], label: 'Total Value', format: 'currency' },
-            { key: ['BOOK_PAGE', 'BookPage', 'Deed'], label: 'Book/Page' },
-            { key: ['ZONE', 'Zoning'], label: 'Zoning' },
+            { key: ['MapLot', 'name'], label: 'Map/Lot' },
+            { key: ['Owner'], label: 'Owner' },
+            { key: ['Account'], label: 'Account #' },
+            { key: ['_address'], label: 'Address', value: address },
+            { key: ['Acres'], label: 'Acreage', format: 'acres' },
+            { key: ['LandValue'], label: 'Land Value', format: 'currency' },
+            { key: ['BldgValue'], label: 'Building Value', format: 'currency', skipZero: true },
+            { key: ['TotalValue'], label: 'Total Value', format: 'currency' },
+            { key: ['NetAssess'], label: 'Net Assessment', format: 'currency' },
+            { key: ['YearBuilt'], label: 'Year Built', skipZero: true },
         ];
 
         let html = '';
 
         for (const field of displayFields) {
-            // Find first matching key
-            let value = null;
-            for (const key of field.key) {
-                if (properties[key] !== undefined && properties[key] !== null && properties[key] !== '') {
-                    value = properties[key];
-                    break;
+            // Use provided value or find from properties
+            let value = field.value !== undefined ? field.value : null;
+
+            if (value === null || value === undefined) {
+                // Find first matching key
+                for (const key of field.key) {
+                    if (properties[key] !== undefined && properties[key] !== null && properties[key] !== '') {
+                        value = properties[key];
+                        break;
+                    }
                 }
             }
 
-            if (value !== null) {
-                // Format value
-                if (field.format === 'currency') {
-                    value = '$' + parseInt(value).toLocaleString();
-                }
+            // Skip if no value or if skipZero and value is 0
+            if (value === null || value === undefined || value === '') continue;
+            if (field.skipZero && (value === '0' || value === 0)) continue;
 
-                html += `
-                    <div class="parcel-detail-row">
-                        <span class="parcel-detail-label">${field.label}:</span>
-                        <span class="parcel-detail-value">${value}</span>
-                    </div>
-                `;
+            // Format value
+            if (field.format === 'currency') {
+                value = '$' + parseInt(value).toLocaleString();
+            } else if (field.format === 'acres') {
+                value = parseFloat(value).toFixed(2) + ' acres';
             }
+
+            html += `
+                <div class="parcel-detail-row">
+                    <span class="parcel-detail-label">${field.label}:</span>
+                    <span class="parcel-detail-value">${value}</span>
+                </div>
+            `;
         }
 
         // If no standard fields found, show all properties
